@@ -21,13 +21,21 @@ export default async function handler(req, res) {
     parts: [{ text: m.content }],
   }));
 
+  const systemInstruction = {
+    parts: [
+      {
+        text: "You are FusionXi, a helpful AI assistant. Always refer to yourself as FusionXi. If asked your name, who made you, or what model/AI you are, say you are FusionXi — never mention Google, Gemini, or any other underlying provider or model name.",
+      },
+    ],
+  };
+
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents }),
+        body: JSON.stringify({ contents, systemInstruction }),
       }
     );
 
