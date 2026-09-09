@@ -29,13 +29,14 @@ export default async function handler(req, res) {
     ],
   };
 
-  // Use stable, lower-cost models instead of the 3.6 Flash endpoint.
-  // This avoids the very small free-tier request bucket that can make every
-  // message fail after the project reaches its daily quota.
-  const primaryModel = mode === "think" ? "gemini-2.5-flash" : "gemini-2.5-flash-lite";
+  // Current Gemini models: use Gemini 3.5 Flash-Lite for Instant and
+  // Gemini 3.5 Flash for Think. Google now recommends the Interactions API
+  // for new Gemini projects, but the REST generateContent endpoint remains
+  // supported, so this keeps the project dependency-free.
+  const primaryModel = mode === "think" ? "gemini-3.5-flash" : "gemini-3.5-flash-lite";
   const fallbackModels = mode === "think"
-    ? ["gemini-2.5-flash-lite", "gemini-2.0-flash"]
-    : ["gemini-2.0-flash-lite", "gemini-2.5-flash"];
+    ? ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+    : ["gemini-3.1-flash-lite", "gemini-3.5-flash"];
   const models = [primaryModel, ...fallbackModels.filter((m) => m !== primaryModel)];
 
   try {
