@@ -5,7 +5,17 @@ const STORAGE_KEY = "fusionxi_chats_v1";
 const PROFILE_KEY = "fusionxi_profile_v1";
 
 function makeChat() {
-  return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title: "New chat", messages: [] };
+  return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title: "New chat", messages: [], createdAt: Date.now(), updatedAt: Date.now(), pinned: false };
+}
+
+function formatChatTime(timestamp) {
+  if (!timestamp) return "";
+  const d = new Date(timestamp);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return `Today • ${time}`;
+  return `${d.toLocaleDateString([], { day: "numeric", month: "short" })} • ${time}`;
 }
 
 function titleFromText(text) {
@@ -80,8 +90,8 @@ export default function Home() {
   function saveProfile(e) {
     e.preventDefault();
     const name = profileDraft.name.trim();
-    const phone = profileDraft.phone.trim();
-    const age = String(profileDraft.age).trim();
+    const phone = profileDraft.phone.replace(/\D/g, "").trim();
+    const age = String(profileDraft.age).replace(/\D/g, "").trim();
     if (!name || !phone || !age) return;
     const next = { name, phone, age };
     setProfile(next);
@@ -119,6 +129,16 @@ export default function Home() {
     setPlusOpen(false);
     setTimeout(autosize, 0);
     if (window.innerWidth <= 850) setSidebarOpen(false);
+  }
+
+  function togglePinChat(id) {
+    setChats((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c));
+      return [...next].sort((a, b) => {
+        if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+        return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+      });
+    });
   }
 
   function deleteChat(id) {
@@ -183,7 +203,8 @@ export default function Home() {
     if (!text || busy || !activeChat) return;
 
     const chatId = activeId;
-    const userMsg = { role: "user", text, attachment: attachment?.name || null };
+    const now = Date.now();
+    const userMsg = { role: "user", text, attachment: attachment?.name || null, sentAt: now };
     const currentMessages = activeChat.messages;
 
     setBusy(true);
@@ -193,7 +214,7 @@ export default function Home() {
     setTimeout(autosize, 0);
 
     appendMessages(chatId, [userMsg]);
-    if (!currentMessages.length) updateChat(chatId, { title: titleFromText(text) });
+    updateChat(chatId, { updatedAt: now, ...(currentMessages.length ? {} : { title: titleFromText(text) }) });
 
     if (imageMode) {
       try {
@@ -267,11 +288,14 @@ export default function Home() {
           <div className="history-label">Chats</div>
           <div className="chat-list">
             {chats.map((chat) => (
-              <div className={`chat-item ${chat.id === activeId ? "selected" : ""}`} key={chat.id}>
+              <div className={`chat-item ${chat.id === activeId ? "selected" : ""} ${chat.pinned ? "pinned" : ""}`} key={chat.id}>
                 <button className="chat-select" onClick={() => selectChat(chat.id)} title={chat.title}>
-                  <span className="chat-icon">💬</span><span className="chat-title">{chat.title}</span>
+                  <span className="chat-icon">{chat.pinned ? "📌" : "💬"}</span><span className="chat-title">{chat.title}</span>
                 </button>
-                <button className="delete-chat" onClick={() => deleteChat(chat.id)} title="Delete chat">×</button>
+                <div className="chat-actions">
+                  <button className="pin-chat" onClick={() => togglePinChat(chat.id)} title={chat.pinned ? "Unpin chat" : "Pin chat"}>{chat.pinned ? "📌" : "☆"}</button>
+                  <button className="delete-chat" onClick={() => deleteChat(chat.id)} title="Delete chat">×</button>
+                </div>
               </div>
             ))}
           </div>
@@ -292,8 +316,8 @@ export default function Home() {
               <h2>{profile ? "Customize your profile" : "Welcome to FusionXi"}</h2>
               <p>{profile ? "Update your details anytime. They stay saved on this device." : "Before you start, tell FusionXi a little about yourself."}</p>
               <label>Name<input autoFocus value={profileDraft.name} onChange={(e) => setProfileDraft({ ...profileDraft, name: e.target.value })} placeholder="Your name" /></label>
-              <label>Phone number<input type="tel" value={profileDraft.phone} onChange={(e) => setProfileDraft({ ...profileDraft, phone: e.target.value })} placeholder="Your phone number" /></label>
-              <label>Age<input type="number" min="1" max="120" value={profileDraft.age} onChange={(e) => setProfileDraft({ ...profileDraft, age: e.target.value })} placeholder="Your age" /></label>
+              <label>Phone number<input type="tel" inputMode="numeric" pattern="[0-9]*" value={profileDraft.phone} onChange={(e) => setProfileDraft({ ...profileDraft, phone: e.target.value.replace(/\D/g, "") })} placeholder="Your phone number" /></label>
+              <label>Age<input type="text" inputMode="numeric" pattern="[0-9]*" min="1" max="120" value={profileDraft.age} onChange={(e) => setProfileDraft({ ...profileDraft, age: e.target.value.replace(/\D/g, "") })} placeholder="Your age" /></label>
               <button className="profile-save" type="submit">{profile ? "Save changes" : "Continue to FusionXi"}</button>
               {profile && <button className="profile-cancel" type="button" onClick={() => setProfileOpen(false)}>Cancel</button>}
               <small className="profile-note">Your profile is stored locally in this browser.</small>
@@ -305,6 +329,7 @@ export default function Home() {
           <header>
             <button className="menu-btn" title="Open chats" onClick={() => setSidebarOpen(true)}>☰</button>
             <div className="mobile-brand">Fusion<span>Xi</span></div>
+            <div className="chat-time"><div className="top-profile-avatar">{profile?.name?.charAt(0)?.toUpperCase() || "F"}</div><div><strong>{profile?.name || "FusionXi"}</strong><small>{activeChat?.messages?.length ? `Chat time • ${formatChatTime(activeChat.updatedAt)}` : `Started • ${formatChatTime(activeChat?.createdAt)}`}</small></div></div>
             <div className="status"><span className="dot" />{imageMode ? "image mode" : `${mode} mode`}</div>
           </header>
 
