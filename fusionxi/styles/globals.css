@@ -122,11 +122,21 @@ main {
   margin-top: 2px;
 }
 .avatar.bot {
-  background: conic-gradient(from 120deg, var(--plasma-a), var(--plasma-b), var(--plasma-a));
+  background: #111827;
+  border: 1px solid var(--line);
+  overflow: hidden;
 }
 .avatar.user {
   background: var(--line);
+  overflow: hidden;
 }
+.avatar img, .top-fusion-avatar img, .profile-avatar img, .profile-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 
 .bubble {
   padding: 11px 15px;
@@ -379,7 +389,7 @@ main::-webkit-scrollbar-thumb {
 .mobile-brand { display:none; font-size:17px; font-weight:600; }
 .mobile-brand span { background:linear-gradient(90deg,var(--plasma-a),var(--plasma-b)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .chat-time { display:flex; align-items:center; gap:9px; margin-left:10px; min-width:0; }
-.top-profile-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#182333; color:var(--plasma-a); font-size:12px; font-weight:700; flex-shrink:0; }
+.top-fusion-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#182333; color:var(--plasma-a); font-size:12px; font-weight:700; flex-shrink:0; }
 .chat-time > div:last-child { display:flex; flex-direction:column; gap:1px; min-width:0; }
 .chat-time strong { font-size:12px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px; }
 .chat-time small { color:var(--ink-dim); font-size:10px; white-space:nowrap; }
@@ -451,8 +461,11 @@ main::-webkit-scrollbar-thumb {
   width:min(420px,100%); padding:28px; border:1px solid var(--line); border-radius:22px;
   background:#0e1420; box-shadow:0 25px 80px rgba(0,0,0,.55); color:var(--ink);
 }
-.profile-logo { display:flex; justify-content:center; margin-bottom:14px; }
+.profile-logo { width:58px; height:58px; display:flex; justify-content:center; align-items:center; margin:0 auto 12px; border-radius:50%; overflow:hidden; border:1px solid var(--line); background:#111827; }
 .profile-logo .mark { width:44px; height:44px; }
+.logo-upload { display:flex !important; align-items:center; justify-content:space-between; gap:10px; padding:9px 11px; border:1px dashed var(--line); border-radius:10px; background:#0a0f18; color:var(--ink-dim); cursor:pointer; margin:0 0 16px !important; }
+.logo-upload input { display:none !important; }
+.logo-upload span { color:var(--plasma-a); font-weight:600; font-size:11px; }
 .profile-logo .mark::after { width:18px; height:18px; top:13px; left:13px; }
 .profile-card h2 { margin:0; text-align:center; font-size:23px; }
 .profile-card > p { margin:8px 0 22px; text-align:center; color:var(--ink-dim); font-size:12px; line-height:1.5; }

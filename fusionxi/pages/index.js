@@ -38,7 +38,7 @@ export default function Home() {
   const [attachment, setAttachment] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profileDraft, setProfileDraft] = useState({ name: "", phone: "", age: "" });
+  const [profileDraft, setProfileDraft] = useState({ name: "", phone: "", age: "", logo: "" });
   const mainRef = useRef(null);
   const taRef = useRef(null);
   const fileRef = useRef(null);
@@ -55,7 +55,7 @@ export default function Home() {
       const savedProfile = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
       if (savedProfile?.name && savedProfile?.phone && savedProfile?.age) {
         setProfile(savedProfile);
-        setProfileDraft(savedProfile);
+        setProfileDraft({ name: savedProfile.name || "", phone: savedProfile.phone || "", age: savedProfile.age || "", logo: savedProfile.logo || "" });
       } else {
         setProfileOpen(true);
       }
@@ -87,20 +87,42 @@ export default function Home() {
   useEffect(() => () => recognitionRef.current?.stop(), []);
 
 
+  function handleProfileLogo(e) {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const scale = Math.min(1, size / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setProfileDraft((prev) => ({ ...prev, logo: canvas.toDataURL("image/jpeg", 0.82) }));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
   function saveProfile(e) {
     e.preventDefault();
     const name = profileDraft.name.trim();
     const phone = profileDraft.phone.replace(/\D/g, "").trim();
     const age = String(profileDraft.age).replace(/\D/g, "").trim();
     if (!name || !phone || !age) return;
-    const next = { name, phone, age };
+    const next = { name, phone, age, logo: profileDraft.logo || "" };
     setProfile(next);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
     setProfileOpen(false);
   }
 
   function openProfileEditor() {
-    setProfileDraft(profile || { name: "", phone: "", age: "" });
+    setProfileDraft(profile || { name: "", phone: "", age: "", logo: "" });
     setProfileOpen(true);
   }
 
@@ -301,7 +323,7 @@ export default function Home() {
           </div>
           <div className="sidebar-bottom">
             <button className="profile-mini" onClick={openProfileEditor}>
-              <div className="profile-avatar">{profile?.name?.charAt(0)?.toUpperCase() || "?"}</div>
+              <div className="profile-avatar">{profile?.logo ? <img src={profile.logo} alt="Profile" /> : (profile?.name?.charAt(0)?.toUpperCase() || "?")}</div>
               <div><strong>{profile?.name || "Your profile"}</strong><small>Customize profile</small></div>
               <span>⚙</span>
             </button>
@@ -312,7 +334,8 @@ export default function Home() {
         {profileOpen && (
           <div className="profile-backdrop">
             <form className="profile-card" onSubmit={saveProfile}>
-              <div className="profile-logo"><div className="mark" /></div>
+              <div className="profile-logo">{profileDraft.logo ? <img src={profileDraft.logo} alt="Profile logo" /> : <div className="mark" />}</div>
+              <label className="logo-upload">Profile logo<input type="file" accept="image/*" onChange={handleProfileLogo} /><span>{profileDraft.logo ? "Change logo" : "Add logo"}</span></label>
               <h2>{profile ? "Customize your profile" : "Welcome to FusionXi"}</h2>
               <p>{profile ? "Update your details anytime. They stay saved on this device." : "Before you start, tell FusionXi a little about yourself."}</p>
               <label>Name<input autoFocus value={profileDraft.name} onChange={(e) => setProfileDraft({ ...profileDraft, name: e.target.value })} placeholder="Your name" /></label>
@@ -329,7 +352,7 @@ export default function Home() {
           <header>
             <button className="menu-btn" title="Open chats" onClick={() => setSidebarOpen(true)}>☰</button>
             <div className="mobile-brand">Fusion<span>Xi</span></div>
-            <div className="chat-time"><div className="top-profile-avatar">{profile?.name?.charAt(0)?.toUpperCase() || "F"}</div><div><strong>{profile?.name || "FusionXi"}</strong><small>{activeChat?.messages?.length ? `Chat time • ${formatChatTime(activeChat.updatedAt)}` : `Started • ${formatChatTime(activeChat?.createdAt)}`}</small></div></div>
+            <div className="chat-time"><div className="top-fusion-avatar"><img src="/fusionxi-favicon.png" alt="FusionXi" /></div><div><strong>FusionXi</strong><small>{activeChat?.messages?.length ? `Chat time • ${formatChatTime(activeChat.updatedAt)}` : `Started • ${formatChatTime(activeChat?.createdAt)}`}</small></div></div>
             <div className="status"><span className="dot" />{imageMode ? "image mode" : `${mode} mode`}</div>
           </header>
 
@@ -345,7 +368,7 @@ export default function Home() {
             <div className="thread">
               {messages.map((m, i) => (
                 <div className={`row ${m.role === "user" ? "user" : "bot"}`} key={i}>
-                  <div className={`avatar ${m.role === "user" ? "user" : "bot"}`} />
+                  <div className={`avatar ${m.role === "user" ? "user" : "bot"}`}>{m.role === "user" ? (profile?.logo ? <img src={profile.logo} alt="You" /> : (profile?.name?.charAt(0)?.toUpperCase() || "U")) : <img src="/fusionxi-favicon.png" alt="FusionXi" />}</div>
                   <div className="bubble">
                     {m.text}
                     {m.attachment && <div className="message-attachment">📎 {m.attachment}</div>}
@@ -353,7 +376,7 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-              {busy && <div className="row bot"><div className="avatar bot" /><div className="bubble"><div className="thinking"><i /><i /><i /></div></div></div>}
+              {busy && <div className="row bot"><div className="avatar bot"><img src="/fusionxi-favicon.png" alt="FusionXi" /></div><div className="bubble"><div className="thinking"><i /><i /><i /></div></div></div>}
             </div>
           </main>
 
