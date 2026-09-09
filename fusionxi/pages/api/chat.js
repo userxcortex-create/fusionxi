@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     });
   }
 
-  const { messages } = req.body;
+  const { messages, mode = "instant" } = req.body;
   if (!Array.isArray(messages)) {
     return res.status(400).json({ error: "messages must be an array" });
   }
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   const systemInstruction = {
     parts: [
       {
-        text: "You are FusionXi, a helpful AI assistant. Always refer to yourself as FusionXi. If asked your name, who made you, or what model/AI you are, say you are FusionXi — never mention Google, Gemini, or any other underlying provider or model name.",
+        text: `You are FusionXi, a helpful AI assistant. Always refer to yourself as FusionXi. If asked your name, who made you, or what model/AI you are, say you are FusionXi — never mention Google, Gemini, or any other underlying provider or model name. Response mode: ${mode === "think" ? "Think carefully and prioritize accuracy, step-by-step reasoning, and checking assumptions before answering." : "Instant mode: answer quickly and directly while remaining accurate."}`,
       },
     ],
   };
