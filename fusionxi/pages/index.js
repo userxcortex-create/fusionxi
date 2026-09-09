@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
 
 const STORAGE_KEY = "fusionxi_chats_v1";
+const PROFILE_KEY = "fusionxi_profile_v1";
 
 function makeChat() {
   return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title: "New chat", messages: [] };
@@ -25,6 +26,9 @@ export default function Home() {
   const [modeOpen, setModeOpen] = useState(false);
   const [listening, setListening] = useState(false);
   const [attachment, setAttachment] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({ name: "", phone: "", age: "" });
   const mainRef = useRef(null);
   const taRef = useRef(null);
   const fileRef = useRef(null);
@@ -33,19 +37,29 @@ export default function Home() {
   const activeChat = chats.find((c) => c.id === activeId) || null;
   const messages = activeChat?.messages || [];
 
+  // Every fresh page open starts in a brand-new chat, while previous chats
+  // stay saved in the sidebar. This is intentionally independent of how many
+  // chats the visitor had before closing/reloading the site.
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      if (Array.isArray(saved) && saved.length) {
-        setChats(saved);
-        setActiveId(saved[0].id);
+      const savedProfile = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null");
+      if (savedProfile?.name && savedProfile?.phone && savedProfile?.age) {
+        setProfile(savedProfile);
+        setProfileDraft(savedProfile);
       } else {
-        const first = makeChat();
-        setChats([first]);
-        setActiveId(first.id);
+        setProfileOpen(true);
       }
     } catch {
-      const first = makeChat();
+      setProfileOpen(true);
+    }
+
+    const first = makeChat();
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const previousChats = Array.isArray(saved) ? saved : [];
+      setChats([first, ...previousChats]);
+      setActiveId(first.id);
+    } catch {
       setChats([first]);
       setActiveId(first.id);
     }
@@ -61,6 +75,24 @@ export default function Home() {
   }, [messages, busy, activeId]);
 
   useEffect(() => () => recognitionRef.current?.stop(), []);
+
+
+  function saveProfile(e) {
+    e.preventDefault();
+    const name = profileDraft.name.trim();
+    const phone = profileDraft.phone.trim();
+    const age = String(profileDraft.age).trim();
+    if (!name || !phone || !age) return;
+    const next = { name, phone, age };
+    setProfile(next);
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+    setProfileOpen(false);
+  }
+
+  function openProfileEditor() {
+    setProfileDraft(profile || { name: "", phone: "", age: "" });
+    setProfileOpen(true);
+  }
 
   function autosize() {
     const el = taRef.current;
@@ -244,9 +276,30 @@ export default function Home() {
             ))}
           </div>
           <div className="sidebar-bottom">
+            <button className="profile-mini" onClick={openProfileEditor}>
+              <div className="profile-avatar">{profile?.name?.charAt(0)?.toUpperCase() || "?"}</div>
+              <div><strong>{profile?.name || "Your profile"}</strong><small>Customize profile</small></div>
+              <span>⚙</span>
+            </button>
             <div className="memory-note"><span className="memory-dot" /><div><strong>Chat memory</strong><small>Saved on this device</small></div></div>
           </div>
         </aside>
+
+        {profileOpen && (
+          <div className="profile-backdrop">
+            <form className="profile-card" onSubmit={saveProfile}>
+              <div className="profile-logo"><div className="mark" /></div>
+              <h2>{profile ? "Customize your profile" : "Welcome to FusionXi"}</h2>
+              <p>{profile ? "Update your details anytime. They stay saved on this device." : "Before you start, tell FusionXi a little about yourself."}</p>
+              <label>Name<input autoFocus value={profileDraft.name} onChange={(e) => setProfileDraft({ ...profileDraft, name: e.target.value })} placeholder="Your name" /></label>
+              <label>Phone number<input type="tel" value={profileDraft.phone} onChange={(e) => setProfileDraft({ ...profileDraft, phone: e.target.value })} placeholder="Your phone number" /></label>
+              <label>Age<input type="number" min="1" max="120" value={profileDraft.age} onChange={(e) => setProfileDraft({ ...profileDraft, age: e.target.value })} placeholder="Your age" /></label>
+              <button className="profile-save" type="submit">{profile ? "Save changes" : "Continue to FusionXi"}</button>
+              {profile && <button className="profile-cancel" type="button" onClick={() => setProfileOpen(false)}>Cancel</button>}
+              <small className="profile-note">Your profile is stored locally in this browser.</small>
+            </form>
+          </div>
+        )}
 
         <section className="workspace">
           <header>
