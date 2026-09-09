@@ -29,22 +29,43 @@ export default async function handler(req, res) {
     ],
   };
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents, systemInstruction }),
-      }
-    );
+  // Use stable, lower-cost models instead of the 3.6 Flash endpoint.
+  // This avoids the very small free-tier request bucket that can make every
+  // message fail after the project reaches its daily quota.
+  const primaryModel = mode === "think" ? "gemini-2.5-flash" : "gemini-2.5-flash-lite";
+  const fallbackModels = mode === "think"
+    ? ["gemini-2.5-flash-lite", "gemini-2.0-flash"]
+    : ["gemini-2.0-flash-lite", "gemini-2.5-flash"];
+  const models = [primaryModel, ...fallbackModels.filter((m) => m !== primaryModel)];
 
-    const data = await response.json();
+  try {
+    let response;
+    let data;
+    let lastError;
+
+    for (const model of models) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents, systemInstruction }),
+        }
+      );
+
+      data = await response.json();
+      if (response.ok) break;
+
+      lastError = data?.error?.message || "Gemini API error";
+      // A quota/rate-limit error may be model-specific, so try the next model.
+      if (response.status !== 429 && response.status !== 503) break;
+    }
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        error: data?.error?.message || "Gemini API error",
-      });
+      const quotaMessage = /quota|rate.?limit|resource.?exhausted|too many requests/i.test(lastError || "")
+        ? "FusionXi is temporarily out of AI requests on this API project. Please try again after the quota resets or connect a different Gemini API project."
+        : lastError || "Gemini API error";
+      return res.status(response.status).json({ error: quotaMessage });
     }
 
     const text =
